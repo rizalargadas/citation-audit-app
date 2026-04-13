@@ -46,13 +46,34 @@ def get_audit_insights(pages_df, queries_df, sop_text):
             raw_slug = parts[-1].replace('-', ' ').replace('_', ' ').lower()
             display_name = parts[-1].replace('-', ' ').replace('_', ' ').title()
 
-        # 3. Match against SOP (Exact keyword check)
+        # 3. Match against SOP (Context-aware keyword check)
+        # We need to ensure that the SOP actually mentions this specific page/task.
+        # Just having "home" in a long SOP is not enough if it's not about the homepage.
         is_match = False
-        # Special case for homepage
-        if raw_slug == "homepage" and ("home" in sop_text.lower() or "homepage" in sop_text.lower()):
-            is_match = True
-        elif any(word in sop_text.lower() for word in raw_slug.split() if len(word) > 3):
-            is_match = True
+
+        if raw_slug == "homepage":
+            # Homepage match: Look for "homepage" as a distinct word or specific phrase
+            # Avoid matching random occurrences of "home" in other words
+            if re.search(r'\b(homepage|home page)\b', sop_text.lower()):
+                is_match = True
+        else:
+            # For other pages, we look for at least two matching significant words from the slug
+            # OR the slug itself appearing as a phrase in the SOP.
+            # This prevents false positives from generic words.
+            words = [w for w in raw_slug.split() if len(w) > 3]
+
+            # Check if full slug (with spaces) exists
+            if raw_slug in sop_text.lower():
+                is_match = True
+            # Or if multiple unique words from the slug match
+            elif len(words) >= 1:
+                match_count = sum(1 for word in words if re.search(r'\b' + re.escape(word) + r'\b', sop_text.lower()))
+                # If the slug is one word (like "yukon"), one match is enough.
+                # If it's multi-word (like "priced-under-10k"), we want more confidence.
+                if len(words) == 1 and match_count >= 1:
+                    is_match = True
+                elif len(words) > 1 and match_count >= 2:
+                    is_match = True
 
         # If it's a SRP or specific inventory page, adjust naming
         if "specials" in raw_slug: display_name = f"{display_name} SRP"
