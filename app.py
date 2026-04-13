@@ -49,11 +49,12 @@ with input_col:
     st.subheader("2. Audit Guidelines")
     sop_text = st.text_area(
         "Paste Deliverables SOP / Strategy Text",
-        height=250,
-        placeholder="Example: Optimized title tags for 'best cat food' in January..."
+        height=300,
+        placeholder="Example: Optimized title tags for 'best cat food' in January...",
+        help="Paste your full list of SEO optimizations here. There is no hard limit, but keep it relevant to the period."
     )
     if sop_text:
-        st.success("Strategy keywords recognized.")
+        st.success(f"Strategy keywords recognized ({len(sop_text)} characters).")
     else:
         st.warning("Please provide your SOP text to match against performance wins.")
 
