@@ -35,7 +35,7 @@ def parse_gsc_combined_excel(file):
 
 def normalize_columns(df):
     """
-    Standardize common GSC column variants to Page, Clicks, Impressions, CTR.
+    Standardize common GSC column variants to Page, Query, Clicks, Impressions, CTR.
     """
     # Mapping of common GSC export column names (Spanish, English variants, etc.)
     # Expand this dictionary as needed for other languages or exports
@@ -45,6 +45,7 @@ def normalize_columns(df):
         'URL': 'Page',
         'Página': 'Page',
         'Top queries': 'Query',
+        'Queries': 'Query',
         'Consulta': 'Query',
         'Clicks': 'Clicks',
         'Clics': 'Clicks',
@@ -59,12 +60,14 @@ def normalize_columns(df):
     # Rename columns that exist in the map
     df = df.rename(columns=column_map)
 
-    # Ensure expected columns are present, even if empty
-    required_cols = ['Page', 'Clicks', 'Impressions', 'CTR']
-    for col in required_cols:
+    # Detect if we should have Page or Query
+    has_page = 'Page' in df.columns
+    has_query = 'Query' in df.columns
+
+    # Ensure expected numeric columns are present, even if empty
+    required_numeric = ['Clicks', 'Impressions', 'CTR']
+    for col in required_numeric:
         if col not in df.columns:
-            # Fallback if specific expected column wasn't found - helps avoid crashes
-            # but we'll flag missing data later
             df[col] = np.nan
 
     return df
@@ -76,6 +79,8 @@ def clean_gsc_data(df):
     # 1. Drop rows where essential identifiers (Page or Query) are missing
     if 'Page' in df.columns:
         df = df.dropna(subset=['Page'])
+    elif 'Query' in df.columns:
+        df = df.dropna(subset=['Query'])
 
     # 2. Convert numeric columns and handle malformed data
     numeric_cols = ['Clicks', 'Impressions', 'CTR']
@@ -93,8 +98,10 @@ def clean_gsc_data(df):
     # 4. Remove rows that couldn't be converted to numbers for essential stats
     df = df.dropna(subset=['Clicks', 'Impressions'])
 
-    # 5. Clean URLs: specifically for the Page/Query matching
+    # 5. Clean URLs or Queries
     if 'Page' in df.columns:
         df['Page'] = df['Page'].astype(str).str.strip()
+    elif 'Query' in df.columns:
+        df['Query'] = df['Query'].astype(str).str.strip()
 
     return df
