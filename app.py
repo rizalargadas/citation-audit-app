@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from parser import parse_gsc_export
 from audit_logic import get_audit_insights
+from prompt_builder import build_prompt_output
 
 st.title("GSC Citation Audit Tool")
 st.write("Upload your Google Search Console exports to generate performance audits.")
@@ -45,26 +46,28 @@ if queries_file:
 # Generate Audit Section
 if st.button("Generate Audit"):
     if st.session_state['df_pages'] is not None and st.session_state['df_queries'] is not None and sop_text:
-        st.header("SEO Metrics Audit")
+        st.header("SEO Metrics Audit Results")
 
-        # Analyze Wins
+        # Analyze Wins and Opportunities
         audit_results = get_audit_insights(
             st.session_state['df_pages'],
             st.session_state['df_queries'],
             sop_text
         )
 
-        st.subheader("Recent Performance Wins")
-        if audit_results['wins']:
-            for win in audit_results['wins']:
-                with st.expander(f"Win: {win['page']}", expanded=True):
-                    st.write(f"**Month:** {win['month']}")
-                    st.write(f"**Change:** {win['change']}")
-                    st.write(f"**Outcome:** {win['outcome']}")
-        else:
-            st.info(audit_results['message'])
-    else:
-        st.warning("Please upload both Pagess and Queries files and provide SOP guidelines.")
+        # Build final report
+        final_report = build_prompt_output(audit_results)
 
-if sop_text:
-    st.info("SOP Guidelines loaded.")
+        # Output Text Area with copy support via st.code
+        st.subheader("Final Formatted Audit")
+        st.write("Below is the audit report formatted according to the SOP. Review and copy for your report.")
+
+        # Using st.code provides the built-in copy-to-clipboard button
+        st.code(final_report, language="text")
+
+        # Also provide a raw markdown view for easier reading
+        with st.expander("Preview formatted content"):
+            st.markdown(final_report.replace('\n', '\n\n'))
+
+    else:
+        st.warning("Please upload both Pages and Queries files and provide SOP guidelines.")
