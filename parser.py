@@ -1,24 +1,37 @@
 import pandas as pd
 import numpy as np
 
-def parse_gsc_export(file):
+def parse_gsc_combined_excel(file):
     """
-    Main entry point for parsing GSC CSV or Excel files.
+    Parses a single Excel file that contains 'Pages' and 'Queries' tabs.
+    Returns a tuple of (df_pages, df_queries).
     """
     try:
-        # Load the file based on its extension
-        if file.name.endswith('.csv'):
-            df = pd.read_csv(file)
-        else:
-            df = pd.read_excel(file)
+        # Load the whole Excel workbook
+        xls = pd.ExcelFile(file)
+        sheet_names = xls.sheet_names
 
-        # Start the cleaning process
-        df = normalize_columns(df)
-        df = clean_gsc_data(df)
+        # Identify the right tabs based on common GSC names
+        pages_sheet = next((s for s in sheet_names if 'pages' in s.lower() or 'página' in s.lower()), None)
+        queries_sheet = next((s for s in sheet_names if 'queries' in s.lower() or 'consulta' in s.lower()), None)
 
-        return df
+        if not pages_sheet or not queries_sheet:
+            # Fallback: if names differ wildly, try to find sheets by common keywords
+            raise ValueError(f"Could not find 'Pages' and 'Queries' tabs. Found: {sheet_names}")
+
+        # Parse Pages
+        df_pages = pd.read_excel(xls, sheet_name=pages_sheet)
+        df_pages = normalize_columns(df_pages)
+        df_pages = clean_gsc_data(df_pages)
+
+        # Parse Queries
+        df_queries = pd.read_excel(xls, sheet_name=queries_sheet)
+        df_queries = normalize_columns(df_queries)
+        df_queries = clean_gsc_data(df_queries)
+
+        return df_pages, df_queries
     except Exception as e:
-        raise ValueError(f"Error parsing file: {e}")
+        raise ValueError(f"Error parsing combined Excel: {e}")
 
 def normalize_columns(df):
     """
