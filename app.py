@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from parser import parse_gsc_export
+from audit_logic import get_audit_insights
 
 st.title("GSC Citation Audit Tool")
 st.write("Upload your Google Search Console exports to generate performance audits.")
@@ -40,6 +41,30 @@ if queries_file:
         st.success(f"Successfully processed {len(df_queries)} rows from Queries file.")
     except Exception as e:
         st.error(f"Error reading Queries file: {e}")
+
+# Generate Audit Section
+if st.button("Generate Audit"):
+    if st.session_state['df_pages'] is not None and st.session_state['df_queries'] is not None and sop_text:
+        st.header("SEO Metrics Audit")
+
+        # Analyze Wins
+        audit_results = get_audit_insights(
+            st.session_state['df_pages'],
+            st.session_state['df_queries'],
+            sop_text
+        )
+
+        st.subheader("Recent Performance Wins")
+        if audit_results['wins']:
+            for win in audit_results['wins']:
+                with st.expander(f"Win: {win['page']}", expanded=True):
+                    st.write(f"**Month:** {win['month']}")
+                    st.write(f"**Change:** {win['change']}")
+                    st.write(f"**Outcome:** {win['outcome']}")
+        else:
+            st.info(audit_results['message'])
+    else:
+        st.warning("Please upload both Pagess and Queries files and provide SOP guidelines.")
 
 if sop_text:
     st.info("SOP Guidelines loaded.")
